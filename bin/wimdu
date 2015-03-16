@@ -1,0 +1,122 @@
+#!/usr/bin/env ruby
+require 'thor'
+require_relative '../config/environment'
+require_relative '../lib/place'
+
+class Wimdu < Thor
+  desc 'list', 'List all ready places'
+  def list
+    places = Place.where(ready: true)
+    places.each do |place|
+      place.render_info
+    end
+    puts "Found #{places.length} offers."
+  end
+
+  desc 'new', 'Create a new place'
+  def new
+    place = Place.create!
+    puts "Starting with new property #{place.id}"
+    questionnaire(place)
+  end
+
+  desc 'continue <offer_id>', 'Continue fill data'
+  def continue(id)
+    place = Place.where(id: id.to_i).first
+    unless place
+      puts "Id not found."
+      return
+    end
+    puts "Contunuing with #{id}"
+    questionnaire(place)
+  end
+
+  private
+
+  def questionnaire(place)
+    take_title(place.id)
+    take_property_type(place.id)
+    take_address(place.id)
+    take_nightly_rate(place.id)
+    take_max_guests(place.id)
+    take_email(place.id)
+    take_phone(place.id)
+    puts "Great job! Listing #{place.id} is complete!"
+  end
+
+  def take_title(id)
+    return if Place.find(id).title
+    begin
+      print "Title: "
+      data = input_from_console
+    end while data == ''
+    save_data(id, :title, data)
+  end
+
+  def take_property_type(id)
+    return if Place.find(id).property_type
+    begin
+      puts "Select property type: "
+      puts "1 - holiday home"
+      puts "2 - apartment"
+      puts "3 - private room"
+      data = input_from_console
+    end while ![1, 2, 3].include?(data.to_i)
+    save_data(id, :property_type, data)
+  end
+
+  def take_address(id)
+    return if Place.find(id).address
+    begin
+      print "Address: "
+      data = input_from_console
+    end while data == ''
+    save_data(id, :address, data)
+  end
+
+  def take_nightly_rate(id)
+    return if Place.find(id).nightly_rate
+    begin
+      print "Nightly rate (in EUR): "
+      data = input_from_console
+    end while !(data =~ /\A[0-9]*\.?[0-9]+\Z/)
+    save_data(id, :nightly_rate, data)
+  end
+
+  def take_max_guests(id)
+    return if Place.find(id).max_guests
+    begin
+      print "Max guests: "
+      data = input_from_console
+    end while !(data =~ /\A[0-9]+\Z/)
+    save_data(id, :max_guests, data)
+  end
+
+  def take_email(id)
+    return if Place.find(id).email
+    begin
+      print "Email: "
+      data = input_from_console
+    end while !(data =~ /\A[\w+\-.]+@[a-z\d\-]+(\.[a-z]+)*\.[a-z]+\Z/i)
+    save_data(id, :email, data)
+  end
+
+  def take_phone(id)
+    return if Place.find(id).phone_number
+    begin
+      print "Phone (ex. +12(123)1234567 ): "
+      data = input_from_console
+    end while !(data =~ /\A\+[0-9]+\([0-9]+\)[0-9]+\Z/i)
+    save_data(id, :phone_number, data)
+  end
+
+  def input_from_console
+    STDIN.gets.chomp
+  end
+
+  def save_data(id, field, data)
+    Place.find(id).update_attribute(field, data)
+  end
+end
+
+Wimdu.start ARGV
